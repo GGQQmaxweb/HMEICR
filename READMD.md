@@ -7,3 +7,6 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 ```.env
 EINVOICE_SECRET_KEY=q9s8D0Lx7pYzJwNn...
 ```
+
+today is Monday.
+
