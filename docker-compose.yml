@@ -17,7 +17,7 @@ services:
     ports:
       - "8080:5000"
     volumes:
-      - .:/app
+      - .:/app:Z
     environment:
       - MONGO_URI=mongodb://root:password123@mongodb:27017/?authSource=admin
     env_file:

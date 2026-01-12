@@ -77,7 +77,16 @@ def login():
     password = request.form["password"]
 
     user = users.find_one({"email": email})
-    if not user or not verify_password(password, user["password"]):
+    print(f"DEBUG LOGIN: Searching for {email}")
+    if not user:
+        print("DEBUG LOGIN: User not found")
+        return jsonify({"success": False, "message": "Invalid credentials"}), 401
+    
+    print(f"DEBUG LOGIN: User found. verifying password...")
+    is_valid = verify_password(password, user["password"])
+    print(f"DEBUG LOGIN: Password valid? {is_valid}")
+    
+    if not is_valid:
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
     login_user(User(user))
@@ -129,15 +138,22 @@ def edit_einvoice_login(receipt_id):
 @app.route("/receipt/create", methods=["POST"])
 @login_required
 def create_note():
-    receipt.insert_one({
-        "owner_id": ObjectId(current_user.id),
-        "title": request.form["title"],
-        "currency": request.form["currency"],
-        "receipt_date": datetime.strptime(
-            request.form["receipt_date"], "%Y-%m-%d"
-        )
-    })
-    return jsonify({"success": True, "message": "Receipt created"}), 201
+    print(f"DEBUG RECEIPT: Received form data: {request.form}")
+    print(f"DEBUG RECEIPT: Current User ID: {current_user.id}")
+    try:
+        receipt.insert_one({
+            "owner_id": ObjectId(current_user.id),
+            "title": request.form["title"],
+            "currency": request.form["currency"],
+            "receipt_date": datetime.strptime(
+                request.form["receipt_date"], "%Y-%m-%d"
+            )
+        })
+        print("DEBUG RECEIPT: Receipt inserted successfully")
+        return jsonify({"success": True, "message": "Receipt created"}), 201
+    except Exception as e:
+        print(f"DEBUG RECEIPT ERROR: {e}")
+        return jsonify({"success": False, "message": str(e)}), 400
 
 @app.route("/receipt")
 @login_required
