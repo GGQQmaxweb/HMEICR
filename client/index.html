@@ -133,9 +133,12 @@
               <label>Date</label>
               <input type="date" name="receipt_date" required>
             </div>
-            <div class="modal-actions">
-              <button type="button" id="close-edit-modal-btn">Cancel</button>
-              <button type="submit" class="btn-primary">Update</button>
+            <div class="modal-actions" style="justify-content: space-between;">
+              <button type="button" id="delete-receipt-btn" class="btn-danger">Delete</button>
+              <div style="display: flex; gap: 1rem;">
+                <button type="button" id="close-edit-modal-btn">Cancel</button>
+                <button type="submit" class="btn-primary">Update</button>
+              </div>
             </div>
           </form>
         </div>

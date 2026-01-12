@@ -305,6 +305,29 @@ editForm.addEventListener('submit', (e) => {
     updateReceipt(fd);
 });
 
+async function deleteReceipt() {
+    if (!confirm('Are you sure you want to delete this receipt?')) return;
+
+    const id = editForm.querySelector('[name="receipt_id"]').value;
+    try {
+        const res = await fetch(`/api/receipt/${id}/delete`, {
+            method: 'POST'
+        });
+
+        if (res.ok) {
+            editModal.classList.add('hidden');
+            loadReceipts();
+        } else {
+            alert('Delete failed');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error deleting receipt');
+    }
+}
+
+document.getElementById('delete-receipt-btn').addEventListener('click', deleteReceipt);
+
 
 // Init
 loadTheme();
