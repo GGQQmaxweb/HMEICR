@@ -137,16 +137,41 @@ function renderReceipts(receipts) {
     receipts.forEach(r => {
         const div = document.createElement('div');
         div.className = 'receipt-item';
-        div.onclick = () => openEditModal(r); // Make clickable
+
+        // Handle both manually added receipts and synced invoices
+        // Manual: { title, amount, currency, receipt_date, _id }
+        // Invoice: { sellerName, totalAmount, invoiceDate, ... } (Assuming structure)
+
+        const title = r.title || r.sellerName || 'Unknown';
+        const amount = parseFloat(r.amount || r.totalAmount || 0);
+        const currency = r.currency || 'TWD'; // Invoices are usually TWD
+
+        // Parse Date safely
+        let dateStr = 'Unknown Date';
+        if (r.receipt_date) {
+            dateStr = new Date(r.receipt_date).toLocaleDateString();
+        } else if (r.invoiceDate) {
+            // Invoice date formatting might be needed depending on API
+            // e.g. "20230101" or "2023/01/01"
+            dateStr = r.invoiceDate;
+        }
+
+        // Only add click handler if it has an ID (Manual receipt)
+        // We could also allow editing invoices if backend supported it
+        if (r._id) {
+            div.onclick = () => openEditModal(r);
+            div.style.cursor = 'pointer';
+        }
+
         div.innerHTML = `
             <div>
-                <strong>${r.title}</strong>
+                <strong>${title}</strong>
                 <br>
-                <small>${new Date(r.receipt_date).toLocaleDateString()}</small>
+                <small>${dateStr}</small>
             </div>
             <div style="text-align: right;">
-                <span class="amount">${r.amount ? r.amount.toFixed(2) : '0.00'}</span>
-                <span class="badge">${r.currency}</span>
+                <span class="amount">${amount.toFixed(2)}</span>
+                <span class="badge">${currency}</span>
             </div>
         `;
         list.appendChild(div);
@@ -159,9 +184,19 @@ function calculateMonthlyTotal(receipts) {
     const currentYear = now.getFullYear();
 
     const total = receipts.reduce((acc, r) => {
-        const rDate = new Date(r.receipt_date);
-        if (rDate.getMonth() === currentMonth && rDate.getFullYear() === currentYear) {
-            return acc + (parseFloat(r.amount) || 0);
+        let rDate;
+        if (r.receipt_date) {
+            rDate = new Date(r.receipt_date);
+        } else if (r.invoiceDate) {
+            // Assuming invoiceDate is parseable or YYYYMMDD
+            // For simplicity, we try new Date. If fails, we skip.
+            rDate = new Date(r.invoiceDate);
+        }
+
+        if (rDate && !isNaN(rDate.getTime())) {
+            if (rDate.getMonth() === currentMonth && rDate.getFullYear() === currentYear) {
+                return acc + (parseFloat(r.amount || r.totalAmount) || 0);
+            }
         }
         return acc;
     }, 0);
@@ -172,10 +207,11 @@ function calculateMonthlyTotal(receipts) {
     }
 }
 
+
+
+
 async function addReceipt(formData) {
     try {
-        const params = new URLSearchParams(formData); // This handles the FormData object directly if passed, or we construct it.
-        // Actually, let's construct it manually to be safe or pass plain object
         const payload = new URLSearchParams();
         for (const pair of formData.entries()) {
             payload.append(pair[0], pair[1]);
@@ -200,6 +236,71 @@ async function addReceipt(formData) {
     } catch (err) {
         console.error(err);
         alert('Failed to add receipt');
+    }
+}
+
+// E-Invoice Logic
+const einvoiceModal = document.getElementById('einvoice-login-modal');
+
+async function linkAccount(formData) {
+    try {
+        const payload = new URLSearchParams();
+        for (const pair of formData.entries()) {
+            payload.append(pair[0], pair[1]);
+        }
+
+        const res = await fetch('/api/einvoice_login/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: payload
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert('Linked E-Invoice Account Successfully!');
+            einvoiceModal.classList.add('hidden');
+        } else {
+            alert('Link failed: ' + data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error linking account');
+    }
+}
+
+async function syncInvoices() {
+    try {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const formatDate = (d) => d.toISOString().split('T')[0].replace(/-/g, '/');
+        const from = formatDate(firstDay);
+        const to = formatDate(lastDay);
+
+        const res = await fetch(`/api/einvoice/carrier/invoices?from=${from}&to=${to}&size=100`);
+        const data = await res.json();
+
+        if (data.content) {
+            const manualRes = await fetch('/api/receipt');
+            const manualData = await manualRes.json();
+
+            const allItems = [...manualData, ...data.content];
+            allItems.sort((a, b) => {
+                const da = new Date(a.receipt_date || a.invoiceDate);
+                const db = new Date(b.receipt_date || b.invoiceDate);
+                return db - da;
+            });
+
+            renderReceipts(allItems);
+            alert(`Synced! Found ${data.content.length} invoices.`);
+        } else {
+            alert('No invoices found or error occurred.');
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert('Error syncing invoices. Did you link your account?');
     }
 }
 
@@ -327,6 +428,20 @@ async function deleteReceipt() {
 }
 
 document.getElementById('delete-receipt-btn').addEventListener('click', deleteReceipt);
+
+// E-Invoice Listeners
+document.getElementById('link-einvoice-btn').addEventListener('click', () => {
+    einvoiceModal.classList.remove('hidden');
+});
+document.getElementById('close-einvoice-modal-btn').addEventListener('click', () => {
+    einvoiceModal.classList.add('hidden');
+});
+document.getElementById('sync-einvoice-btn').addEventListener('click', syncInvoices);
+document.getElementById('einvoice-login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    linkAccount(fd);
+});
 
 
 // Init

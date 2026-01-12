@@ -162,6 +162,20 @@ button[type="submit"]:hover,
     background-color: #dc2626;
 }
 
+.btn-secondary {
+    background-color: #4b5563;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background-color: #374151;
+}
+
 /* Dashboard */
 .dashboard-header {
     display: flex;

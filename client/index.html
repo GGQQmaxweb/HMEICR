@@ -74,7 +74,11 @@
 
       <div class="dashboard-header">
         <h2>My Receipts</h2>
-        <button id="show-add-receipt-modal" class="btn-primary">+ Add Receipt</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="link-einvoice-btn" class="btn-secondary">Link E-Invoice</button>
+          <button id="sync-einvoice-btn" class="btn-secondary">Sync Invoices</button>
+          <button id="show-add-receipt-modal" class="btn-primary">+ Add Receipt</button>
+        </div>
       </div>
 
       <!-- Receipt List -->
@@ -142,9 +146,30 @@
             </div>
           </form>
         </div>
+        <!-- Modal for Linking E-Invoice -->
+        <div id="einvoice-login-modal" class="modal hidden">
+          <div class="modal-content">
+            <h3>Link E-Invoice Account</h3>
+            <p style="font-size: 0.9rem; margin-bottom: 1rem; color: #6b7280;">Enter your Mobile Barcode credentials.
+            </p>
+            <form id="einvoice-login-form">
+              <div class="form-group">
+                <label>Mobile Barcode (Phone No.)</label>
+                <input type="text" name="einvoice_username" placeholder="/ABC+123" required>
+              </div>
+              <div class="form-group">
+                <label>Verification Code (Password)</label>
+                <input type="password" name="einvoice_password" required>
+              </div>
+              <div class="modal-actions">
+                <button type="button" id="close-einvoice-modal-btn">Cancel</button>
+                <button type="submit" class="btn-primary">Link Account</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 </body>
 
 </html>
