@@ -2,6 +2,34 @@
 // State
 let currentUser = null;
 
+// Theme Logic
+const themeToggleBtn = document.getElementById('theme-toggle');
+const body = document.body;
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        body.classList.add('dark-mode');
+        themeToggleBtn.textContent = '☀️ Light';
+    } else {
+        body.classList.remove('dark-mode');
+        themeToggleBtn.textContent = '🌙 Dark';
+    }
+}
+
+function toggleTheme() {
+    body.classList.toggle('dark-mode');
+    if (body.classList.contains('dark-mode')) {
+        localStorage.setItem('theme', 'dark');
+        themeToggleBtn.textContent = '☀️ Light';
+    } else {
+        localStorage.setItem('theme', 'light');
+        themeToggleBtn.textContent = '🌙 Dark';
+    }
+}
+
+themeToggleBtn.addEventListener('click', toggleTheme);
+
 // DOM Elements
 const views = {
     login: document.getElementById('login-view'),
@@ -99,6 +127,8 @@ function renderReceipts(receipts) {
     const list = document.getElementById('receipt-list');
     list.innerHTML = '';
 
+    calculateMonthlyTotal(receipts);
+
     if (receipts.length === 0) {
         list.innerHTML = '<p>No receipts found.</p>';
         return;
@@ -107,16 +137,39 @@ function renderReceipts(receipts) {
     receipts.forEach(r => {
         const div = document.createElement('div');
         div.className = 'receipt-item';
+        div.onclick = () => openEditModal(r); // Make clickable
         div.innerHTML = `
             <div>
                 <strong>${r.title}</strong>
                 <br>
                 <small>${new Date(r.receipt_date).toLocaleDateString()}</small>
             </div>
-            <span class="badge">${r.currency}</span>
+            <div style="text-align: right;">
+                <span class="amount">${r.amount ? r.amount.toFixed(2) : '0.00'}</span>
+                <span class="badge">${r.currency}</span>
+            </div>
         `;
         list.appendChild(div);
     });
+}
+
+function calculateMonthlyTotal(receipts) {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const total = receipts.reduce((acc, r) => {
+        const rDate = new Date(r.receipt_date);
+        if (rDate.getMonth() === currentMonth && rDate.getFullYear() === currentYear) {
+            return acc + (parseFloat(r.amount) || 0);
+        }
+        return acc;
+    }, 0);
+
+    const totalEl = document.getElementById('total-month-amount');
+    if (totalEl) {
+        totalEl.textContent = total.toFixed(2);
+    }
 }
 
 async function addReceipt(formData) {
@@ -150,6 +203,57 @@ async function addReceipt(formData) {
     }
 }
 
+// Edit Receipt Logic
+const editModal = document.getElementById('edit-receipt-modal');
+const editForm = document.getElementById('edit-receipt-form');
+
+function openEditModal(receipt) {
+    editForm.querySelector('[name="receipt_id"]').value = receipt._id;
+    editForm.querySelector('[name="title"]').value = receipt.title;
+    editForm.querySelector('[name="amount"]').value = receipt.amount;
+    editForm.querySelector('[name="currency"]').value = receipt.currency;
+
+    // Format date specifically for input type="date" (YYYY-MM-DD)
+    const dateObj = new Date(receipt.receipt_date);
+    const dateStr = dateObj.toISOString().split('T')[0];
+    editForm.querySelector('[name="receipt_date"]').value = dateStr;
+
+    editModal.classList.remove('hidden');
+}
+
+async function updateReceipt(formData) {
+    try {
+        const id = formData.get('receipt_id');
+        const payload = new URLSearchParams();
+        for (const pair of formData.entries()) {
+            payload.append(pair[0], pair[1]);
+        }
+
+        // We use the existing server endpoint which is a POST to /receipt/<id>/edit
+        // Note: The server currently redirects to list_receipt. Since we are checking res.ok, 
+        // fetch follows redirects by default, so we should get the list back or just OK.
+        // Actually, server does `redirect(url_for("list_receipt"))`. Fetch will follow it and return the JSON list!
+        // So we can just setReceipts directly if we wanted, or just call loadReceipts.
+
+        const res = await fetch(`/api/receipt/${id}/edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: payload
+        });
+
+        if (res.ok) {
+            editModal.classList.add('hidden');
+            loadReceipts();
+        } else {
+            alert('Update failed');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error updating receipt');
+    }
+}
+
+
 // Event Listeners
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -175,7 +279,7 @@ document.getElementById('go-to-login').addEventListener('click', (e) => {
 
 document.getElementById('logout-btn').addEventListener('click', logout);
 
-// Modal Logic
+// Add Modal Logic
 const modal = document.getElementById('add-receipt-modal');
 document.getElementById('show-add-receipt-modal').addEventListener('click', () => {
     modal.classList.remove('hidden');
@@ -190,6 +294,18 @@ document.getElementById('add-receipt-form').addEventListener('submit', (e) => {
     addReceipt(fd);
 });
 
+// Edit Modal Logic
+document.getElementById('close-edit-modal-btn').addEventListener('click', () => {
+    editModal.classList.add('hidden');
+});
+
+editForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    updateReceipt(fd);
+});
+
 
 // Init
+loadTheme();
 showView('login');

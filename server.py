@@ -141,10 +141,12 @@ def create_note():
     print(f"DEBUG RECEIPT: Received form data: {request.form}")
     print(f"DEBUG RECEIPT: Current User ID: {current_user.id}")
     try:
+        amount = float(request.form.get("amount", 0))
         receipt.insert_one({
             "owner_id": ObjectId(current_user.id),
             "title": request.form["title"],
             "currency": request.form["currency"],
+            "amount": amount,
             "receipt_date": datetime.strptime(
                 request.form["receipt_date"], "%Y-%m-%d"
             )
@@ -164,28 +166,36 @@ def list_receipt():
     for r in user_receipt:
         r["_id"] = str(r["_id"])
         r["owner_id"] = str(r["owner_id"])
+        if "amount" not in r:
+            r["amount"] = 0
     
     return jsonify(user_receipt), 200
 
 @app.route("/receipt/<receipt_id>/edit", methods=["POST"])
 @login_required
 def edit_note(receipt_id):
-    receipt.update_one(
-        {
-            "_id": ObjectId(receipt_id),
-            "owner_id": ObjectId(current_user.id)
-        },
-        {
-            "$set": {
-                "title": request.form["title"],
-                "currency": request.form["currency"],
-                "receipt_date": datetime.strptime(
-                    request.form["receipt_date"], "%Y-%m-%d"
-                )
+    try:
+        amount = float(request.form.get("amount", 0))
+        receipt.update_one(
+            {
+                "_id": ObjectId(receipt_id),
+                "owner_id": ObjectId(current_user.id)
+            },
+            {
+                "$set": {
+                    "title": request.form["title"],
+                    "currency": request.form["currency"],
+                    "amount": amount,
+                    "receipt_date": datetime.strptime(
+                        request.form["receipt_date"], "%Y-%m-%d"
+                    )
+                }
             }
-        }
-    )
-    return redirect(url_for("list_receipt"))
+        )
+        return redirect(url_for("list_receipt"))
+    except Exception as e:
+        print(f"Edit Error: {e}")
+        return redirect(url_for("list_receipt"))
 
 @app.route("/receipt/<receipt_id>/delete", methods=["POST"])
 @login_required
