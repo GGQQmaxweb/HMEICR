@@ -118,10 +118,9 @@ def create_einvoice_login():
 
 @app.route("/einvoice_login/edit", methods=["POST"])
 @login_required
-def edit_einvoice_login(receipt_id):
+def edit_einvoice_login():
     einvoice_login.update_one(
         {
-            "_id": ObjectId(receipt_id),
             "owner_id": ObjectId(current_user.id)
         },
         {
@@ -133,7 +132,29 @@ def edit_einvoice_login(receipt_id):
             }
         }
     )
-    return redirect(url_for("dashboard"))
+    return jsonify({"success": True, "message": "E-Invoice credentials updated"}), 200
+
+@app.route("/einvoice_login/delete", methods=["POST"])
+@login_required
+def delete_einvoice_login():
+    einvoice_login.delete_one({
+        "owner_id": ObjectId(current_user.id)
+    })
+    return jsonify({"success": True, "message": "E-Invoice credentials deleted"}), 200
+
+@app.route("/einvoice/status", methods=["GET"])
+@login_required
+def get_einvoice_status():
+    doc = einvoice_login.find_one({"owner_id": ObjectId(current_user.id)})
+    if doc:
+        return jsonify({
+            "linked": True,
+            "username": doc.get("einvoice_username", "")
+        }), 200
+    else:
+        return jsonify({
+            "linked": False
+        }), 200
 
 @app.route("/receipt/create", methods=["POST"])
 @login_required
@@ -230,14 +251,17 @@ def carrier_invoice_list():
     last_day = request.args.get("to")
     page = int(request.args.get("page", 0))
     size = int(request.args.get("size", 50))
+    date_str = "2025/12/01"
+    first_day_dt = datetime.strptime(first_day, "%Y/%m/%d")
+    last_day_dt = datetime.strptime(last_day, "%Y/%m/%d")
 
     if not first_day or not last_day:
         return jsonify({"error": "from and to dates are required"}), 400
 
     result = getCarrierInvoice(
         api=api,
-        frist_day=first_day,
-        last_day=last_day,
+        frist_day=first_day_dt,
+        last_day=last_day_dt,
         size=size,
         page=page,
     )
@@ -291,7 +315,7 @@ def get_user_api(user_id):
     password = decrypt_password(doc["einvoice_password"])
 
     # Create a new API session for this user
-    api = EInvoiceAuthenticator(username=username, password=password)
+    api = EInvoiceAuthenticator(user=username, password=password)
 
     # Optionally, wipe password after initialization
     password = None

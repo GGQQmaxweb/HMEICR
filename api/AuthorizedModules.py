@@ -38,18 +38,34 @@ class EInvoiceAuthenticator:
         # Setup Chrome driver
 
         options = Options()
-        options.add_argument('--headless')  # Run in headless mode
-        options.add_argument('--window-size=1280,1024') # The Button is diffrent from moble page!
-        options.add_argument("user-agent={self.ua}")
+       # REQUIRED for Docker
+        options.add_argument("--headless=new")   # modern headless
+        options.add_argument("--no-sandbox")      # REQUIRED in containers
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+
+        # Viewport (desktop layout)
+        options.add_argument("--window-size=1280,1024")
+
+        # Proper user agent (BUG FIXED)
+        options.add_argument(f"user-agent={self.ua}")
+
+        # Reduce automation detection
         options.add_argument("--disable-blink-features=AutomationControlled")
-        driver = driver = webdriver.Chrome(options=options) #uc.Chrome() you may need it in some env
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            })
-        """
-        })
+
+        driver = webdriver.Chrome(options=options)
+
+        # Hide webdriver flag (works only after driver starts)
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {
+                "source": """
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                """
+            }
+        )
         driver.get("https://www.einvoice.nat.gov.tw/")
         element = WebDriverWait(driver, 10).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, 'a[title="登入"]'))

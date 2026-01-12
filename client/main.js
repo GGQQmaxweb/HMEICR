@@ -1,6 +1,6 @@
-
 // State
 let currentUser = null;
+let isEInvoiceLinked = false;
 
 // Theme Logic
 const themeToggleBtn = document.getElementById('theme-toggle');
@@ -70,6 +70,7 @@ async function login(email, password) {
             userEmailSpan.textContent = email;
             showView('dashboard');
             loadReceipts();
+            checkEInvoiceStatus(); // Check status on login
         } else {
             alert(data.message || 'Login failed');
         }
@@ -241,6 +242,42 @@ async function addReceipt(formData) {
 
 // E-Invoice Logic
 const einvoiceModal = document.getElementById('einvoice-login-modal');
+const linkEinvoiceBtn = document.getElementById('link-einvoice-btn');
+const einvoiceUsernameInput = document.getElementById('einvoice-login-form').querySelector('[name="einvoice_username"]');
+const einvoicePasswordInput = document.getElementById('einvoice-login-form').querySelector('[name="einvoice_password"]');
+const unlinkEinvoiceBtn = document.getElementById('unlink-einvoice-btn');
+const submitEinvoiceBtn = document.getElementById('submit-einvoice-btn');
+
+
+async function checkEInvoiceStatus() {
+    try {
+        const res = await fetch('/api/einvoice/status');
+        if (res.ok) {
+            const data = await res.json();
+            isEInvoiceLinked = data.linked;
+            updateEInvoiceUI(data.username);
+        }
+    } catch (err) {
+        console.error('Failed to check e-invoice status', err);
+    }
+}
+
+function updateEInvoiceUI(username = '') {
+    if (isEInvoiceLinked) {
+        linkEinvoiceBtn.textContent = 'Manage E-Invoice';
+        submitEinvoiceBtn.textContent = 'Update Account';
+        unlinkEinvoiceBtn.classList.remove('hidden');
+        if (username) {
+            einvoiceUsernameInput.value = username;
+        }
+    } else {
+        linkEinvoiceBtn.textContent = 'Link E-Invoice';
+        submitEinvoiceBtn.textContent = 'Link Account';
+        unlinkEinvoiceBtn.classList.add('hidden');
+        einvoiceUsernameInput.value = '';
+        einvoicePasswordInput.value = '';
+    }
+}
 
 async function linkAccount(formData) {
     try {
@@ -249,7 +286,10 @@ async function linkAccount(formData) {
             payload.append(pair[0], pair[1]);
         }
 
-        const res = await fetch('/api/einvoice_login/create', {
+        // Determine endpoint based on state
+        const endpoint = isEInvoiceLinked ? '/api/einvoice_login/edit' : '/api/einvoice_login/create';
+
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: payload
@@ -257,14 +297,36 @@ async function linkAccount(formData) {
         const data = await res.json();
 
         if (res.ok) {
-            alert('Linked E-Invoice Account Successfully!');
+            alert(isEInvoiceLinked ? 'Updated Successfully!' : 'Linked Successfully!');
             einvoiceModal.classList.add('hidden');
+            checkEInvoiceStatus();
         } else {
-            alert('Link failed: ' + data.message);
+            alert('Operation failed: ' + data.message);
         }
     } catch (err) {
         console.error(err);
-        alert('Error linking account');
+        alert('Error processing account');
+    }
+}
+
+async function unlinkAccount() {
+    if (!confirm('Are you sure you want to unlink your E-Invoice account?')) return;
+
+    try {
+        const res = await fetch('/api/einvoice_login/delete', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert('Unlinked Successfully!');
+            isEInvoiceLinked = false;
+            einvoiceModal.classList.add('hidden');
+            updateEInvoiceUI();
+        } else {
+            alert('Unlink failed: ' + data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error unlinking account');
     }
 }
 
@@ -442,6 +504,7 @@ document.getElementById('einvoice-login-form').addEventListener('submit', (e) =>
     const fd = new FormData(e.target);
     linkAccount(fd);
 });
+document.getElementById('unlink-einvoice-btn').addEventListener('click', unlinkAccount);
 
 
 // Init
