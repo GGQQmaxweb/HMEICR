@@ -2,7 +2,7 @@ from flask import Flask, request, redirect, url_for, render_template, flash, jso
 import os
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from pymongo import MongoClient
-from passlib.context import CryptContext
+from werkzeug.security import generate_password_hash, check_password_hash
 from os import getenv
 from api.AuthorizedModules import EInvoiceAuthenticator
 from bson import ObjectId
@@ -33,13 +33,12 @@ einvoice_login = db["einvoice_login"]
 receipt = db["receipt"]
 
 # ---------- Password Hashing ----------
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return generate_password_hash(password)
 
 def verify_password(password: str, hashed: str) -> bool:
-    return pwd_context.verify(password, hashed)
+    return check_password_hash(hashed, password)
 
 # ---------- Flask-Login ----------
 login_manager = LoginManager()
