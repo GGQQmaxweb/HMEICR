@@ -1,109 +1,67 @@
-# HMEICR 專案建置指南
+# HMEICR Project
 
-本指南說明如何設定後端 (Flask + MongoDB) 和前端 (React)。
+HMEICR (Household Expense & E-Invoice Management) is a web application for tracking receipts and integrating with the Taiwan E-Invoice platform.
 
-## 前置需求
-- Python 3.11+
-- Node.js & npm
-- Docker & Docker Compose (選用，方便快速架設後端)
+## Architecture
 
----
+*   **Frontend**: Vanilla JavaScript, HTML5, CSS3 (Served via Vite)
+*   **Backend**: Python Flask
+*   **Database**: MongoDB
+*   **Containerization**: Docker Compose
 
-## 1. 後端設定
+## Features
 
-您可以使用 **Docker** (推薦) 或 **手動** 方式執行後端。
+*   **User Authentication**: Register, Login, Logout (Secure Session & Password Hashing).
+*   **Receipt Management**:
+    *   Add Receipts (Title, Amount, Currency, Date).
+    *   List Receipts.
+    *   **Edit Receipts** (Update details).
+    *   **Delete Receipts** (With confirmation).
+*   **Analytics**: View **Total Amount** for the current month.
+*   **UI/UX**:
+    *   Clean, Responsive Design.
+    *   **Dark Mode** (Global toggle).
+    *   Interactive Modals.
 
-### 設定 (.env)
-首先，產生必要的環境變數。
+## Documentation
 
-1. 在根目錄建立一個 `.env` 檔案。
-2. 產生連線金鑰與秘密金鑰：
-   ```bash
-   # 若尚未安裝 cryptography，請先安裝
-   python -m pip install cryptography
-   
-   # 產生 Fernet 金鑰
-   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-   ```
-3. 將金鑰加入您的 `.env` 檔案：
-   ```env
-   # .env
-   EINVOICE_SECRET_KEY=貼上您產生的金鑰
-   MONGO_APP_PASSWORD=password123
-   secret_key=您的_flask_secret_key
-   ```
+Comprehensive documentation is available in the `docs/` directory:
 
-### 選項 A: 使用 Docker 執行 (推薦)
-這將自動建置並啟動 Flask 伺服器與 MongoDB 資料庫。
+*   [API Specification](docs/api-spec.md)
+*   [Architecture Diagram](docs/architecture.md)
+*   [System Flowchart](docs/flowchart.md)
 
-```bash
-docker-compose up --build
-```
-伺服器將在 `http://localhost:8080` 啟動。
+## Getting Started
 
-### 選項 B: 手動執行
+### Prerequisites
 
-1. **啟動 MongoDB**: 確保您本地已執行 MongoDB 實體，並監聽 `27017` 連接埠。
-   
-2. **安裝依賴套件**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+*   Docker & Docker Compose
 
-3. **啟動伺服器**:
-   ```bash
-   python server.py
-   ```
-伺服器將在 `http://localhost:5000` (預設 Flask 連接埠) 啟動。
+### Setup & Run (Recommended)
 
----
+1.  **Clone the repository**.
+2.  **Create `.env` file** in the root directory:
+    ```env
+    MONGO_URI=mongodb://root:password123@mongodb:27017/myapp?authSource=admin
+    EINVOICE_SECRET_KEY=your_generated_secret_key
+    secret_key=your_flask_secret_key
+    ```
+3.  **Run with Docker Compose**:
+    ```bash
+    docker compose up --build
+    ```
+4.  **Access the application**:
+    *   Frontend: `http://localhost:5173` (Proxies API requests to backend)
+    *   Backend API: `http://localhost:8080` (Internal port 5000 mapped to 8080)
 
-## 2. 前端設定 (React)
+### Manual Setup (Development)
 
-`client` 目錄保留給前端應用程式。以下是使用 Vite 建立 React 應用程式的步驟。
+#### Backend
+1.  Install dependencies: `pip install -r requirements.txt`
+2.  Run MongoDB locally on port 27017.
+3.  Start Server: `python server.py` (Runs on port 5000).
 
-### 初始化 React 應用程式
-如果 `client` 資料夾是空的，請初始化它：
-
-```bash
-cd client
-npm create vite@latest . -- --template react
-npm install
-```
-
-### 安裝常用依賴套件
-一般儀表板應用程式可能需要以下套件：
-
-```bash
-npm install axios react-router-dom
-# 選用: 安裝 TailwindCSS
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-```
-
-### 啟動前端
-啟動開發伺服器：
-
-```bash
-npm run dev
-```
-前端通常會在 `http://localhost:5173` 啟動。
-
-### 連線至後端
-確保您的 React 應用程式 API 呼叫指向後端 URL (例如使用 Docker 時為 `http://localhost:8080`，手動時為 `http://localhost:5000`)。您可能需要在 `vite.config.js` 中設定代理 (proxy) 以避免開發時的跨域 (CORS) 問題：
-
-```javascript
-// vite.config.js
-export default defineConfig({
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080', // 或 http://localhost:5000
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
-  },
-  // ... 其他設定
-})
-```
+#### Frontend
+1.  Navigate to client: `cd client`
+2.  Install dependencies: `npm install`
+3.  Start Dev Server: `npm run dev`
