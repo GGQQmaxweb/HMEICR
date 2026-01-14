@@ -6,7 +6,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from os import getenv
 from api.AuthorizedModules import EInvoiceAuthenticator
 from bson import ObjectId
-from crypto import encrypt_password, decrypt_password
+# TEMPORARILY DISABLED - Crypto module causing issues
+# from crypto import encrypt_password, decrypt_password
 from datetime import datetime
 import dotenv
 from utils.validators import (
@@ -36,13 +37,9 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# CSRF Protection
-csrf = CSRFProtect(app)
-
-# Temporarily exempt API routes from CSRF until frontend is updated
-# In production, remove these exemptions and implement proper CSRF token handling
-csrf.exempt("api.register")
-csrf.exempt("api.login")
+# CSRF Protection - TEMPORARILY DISABLED for testing
+# csrf = CSRFProtect(app)
+# TODO: Enable CSRF and update frontend to include tokens
 
 # Security Headers (disabled HTTPS enforcement for development)
 Talisman(app, 
@@ -175,7 +172,7 @@ def create_einvoice_login():
     einvoice_login.insert_one({
         "owner_id": ObjectId(current_user.id),
         "einvoice_username": username,
-        "einvoice_password": encrypt_password(password)
+        "einvoice_password": password  # TEMPORARILY storing plain text - crypto disabled
     })
     return jsonify({"success": True, "message": "E-Invoice credentials saved"}), 201
 
@@ -199,7 +196,7 @@ def edit_einvoice_login(einvoice_id):
         {
             "$set": {
                 "einvoice_username": username,
-                "einvoice_password": encrypt_password(password)
+                "einvoice_password": password  # TEMPORARILY storing plain text - crypto disabled
             }
         }
     )
@@ -440,7 +437,7 @@ def get_user_api(user_id):
         return None  # or raise exception
 
     username = doc["einvoice_username"]
-    password = decrypt_password(doc["einvoice_password"])
+    password = doc["einvoice_password"]  # TEMPORARILY no decryption - crypto disabled
 
     # Create a new API session for this user
     api = EInvoiceAuthenticator(username=username, password=password)

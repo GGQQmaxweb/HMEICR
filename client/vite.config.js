@@ -9,7 +9,7 @@ export default defineConfig({
       '/api': {
         target: process.env.API_TARGET || 'http://127.0.0.1:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        // Don't rewrite - backend now expects /api prefix
       },
     },
   },

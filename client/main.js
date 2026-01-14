@@ -167,30 +167,51 @@ async function loadReceipts() {
 
 function renderReceipts(receipts) {
     const list = document.getElementById('receipt-list');
-    list.innerHTML = '';
+    // Clear existing content safely
+    while (list.firstChild) {
+        list.removeChild(list.firstChild);
+    }
 
     calculateMonthlyTotal(receipts);
 
-    if (receipts.length === 0) {
-        list.innerHTML = '<p>No receipts found.</p>';
+    if (!receipts || receipts.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.textContent = 'No receipts found.';
+        list.appendChild(emptyMsg);
         return;
     }
 
     receipts.forEach(r => {
         const div = document.createElement('div');
         div.className = 'receipt-item';
-        div.onclick = () => openEditModal(r); // Make clickable
-        div.innerHTML = `
-            <div>
-                <strong>${r.title}</strong>
-                <br>
-                <small>${new Date(r.receipt_date).toLocaleDateString()}</small>
-            </div>
-            <div style="text-align: right;">
-                <span class="amount">${r.amount ? r.amount.toFixed(2) : '0.00'}</span>
-                <span class="badge">${r.currency}</span>
-            </div>
-        `;
+        div.dataset.id = r._id; // Store ID for potential future use
+
+        const leftDiv = document.createElement('div');
+        const titleStrong = document.createElement('strong');
+        titleStrong.textContent = r.title;
+        leftDiv.appendChild(titleStrong);
+        leftDiv.appendChild(document.createElement('br'));
+        const dateSmall = document.createElement('small');
+        dateSmall.textContent = new Date(r.receipt_date).toLocaleDateString();
+        leftDiv.appendChild(dateSmall);
+
+        const rightDiv = document.createElement('div');
+        rightDiv.style.textAlign = 'right';
+        const amountSpan = document.createElement('span');
+        amountSpan.className = 'amount';
+        amountSpan.textContent = (r.amount ? parseFloat(r.amount).toFixed(2) : '0.00');
+        const currencySpan = document.createElement('span');
+        currencySpan.className = 'badge';
+        // Sanitize currency to only allow uppercase letters
+        currencySpan.textContent = (r.currency || 'TWD').replace(/[^A-Z]/g, '');
+
+        rightDiv.appendChild(amountSpan);
+        rightDiv.appendChild(currencySpan);
+
+        div.appendChild(leftDiv);
+        div.appendChild(rightDiv);
+
+        div.addEventListener('click', () => openEditModal(r));
         list.appendChild(div);
     });
 }
