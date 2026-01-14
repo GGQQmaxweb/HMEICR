@@ -1,4 +1,7 @@
 
+// Import validation functions
+import { validateEmail, validatePassword, showValidationError, clearAllValidationErrors } from './validators.js';
+
 // State
 let currentUser = null;
 
@@ -53,6 +56,24 @@ function showView(viewName) {
 
 // Auth Functions
 async function login(email, password) {
+    // Clear previous validation errors
+    clearAllValidationErrors();
+
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+        const emailInput = document.querySelector('#login-view input[type="email"]');
+        if (emailInput) showValidationError(emailInput, emailValidation.message);
+        return;
+    }
+
+    // Basic password check (not empty)
+    if (!password || password.trim() === '') {
+        const passwordInput = document.querySelector('#login-view input[type="password"]');
+        if (passwordInput) showValidationError(passwordInput, 'Password is required');
+        return;
+    }
+
     try {
         const formData = new URLSearchParams();
         formData.append('email', email);
@@ -68,6 +89,7 @@ async function login(email, password) {
         if (res.ok) {
             currentUser = { email };
             userEmailSpan.textContent = email;
+            clearAllValidationErrors();
             showView('dashboard');
             loadReceipts();
         } else {
@@ -80,6 +102,25 @@ async function login(email, password) {
 }
 
 async function register(email, password) {
+    // Clear previous validation errors
+    clearAllValidationErrors();
+
+    // Vali date email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+        const emailInput = document.querySelector('#register-view input[type="email"]');
+        if (emailInput) showValidationError(emailInput, emailValidation.message);
+        return;
+    }
+
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+        const passwordInput = document.querySelector('#register-view input[type="password"]');
+        if (passwordInput) showValidationError(passwordInput, passwordValidation.message);
+        return;
+    }
+
     try {
         const formData = new URLSearchParams();
         formData.append('email', email);
@@ -93,6 +134,7 @@ async function register(email, password) {
         const data = await res.json();
 
         if (res.ok) {
+            clearAllValidationErrors();
             alert('Registration successful! Please login.');
             showView('login');
         } else {
